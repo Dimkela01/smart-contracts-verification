@@ -1,0 +1,5 @@
+CTLSPEC AG (sender_balance >= amount -> AX (next(sender_balance) = sender_balance - amount))
+CTLSPEC AG (sender_balance >= amount -> AX (next(receiver_balance) = receiver_balance + amount))
+CTLSPEC AX (next(sender_balance) + next(receiver_balance) = sender_balance + receiver_balance)
+CTLSPEC AG (next(sender_balance) <= sender_balance)
+CTLSPEC AG (next(receiver_balance) <= receiver_balance + amount)
