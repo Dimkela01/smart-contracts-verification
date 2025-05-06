@@ -77,10 +77,6 @@ def extract_transfer_logic(ast_root):
 
                         if lhs == "<unknown>" or rhs == "<unknown>":
                             continue
-
-                        #if rhs == "1000":  # prevent constant overwrite bug
-                        #    continue
-
                         if operator == "-=":
                             transition_rhs = f"{lhs} - {rhs}"
                         elif operator == "+=":
@@ -110,7 +106,7 @@ def extract_transfer_logic(ast_root):
                                 if callee.get("nodeType") == "Identifier" and callee.get("name") == "revert":
                                     revert_found = True
 
-                    # NEW CASE: RevertStatement directly
+                    # RevertStatement directly
                     elif true_body.get("nodeType") == "RevertStatement":
                         revert_found = True
                     if revert_found:
