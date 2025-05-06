@@ -1,0 +1,6 @@
+read_model -i Token_combined.smv
+flatten_hierarchy
+encode_variables
+build_model
+check_ctlspec
+quit

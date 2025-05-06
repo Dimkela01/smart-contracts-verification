@@ -1,0 +1,19 @@
+MODULE main
+VAR
+    sender_balance : 0..1000;
+    receiver_balance : 0..1000;
+    amount : 0..1000;
+
+INIT
+    sender_balance = 500 & receiver_balance = 500 & amount = 0;
+
+TRANS
+    (sender_balance >= amount) ->
+    (next(sender_balance) = sender_balance - amount &
+    next(receiver_balance) = receiver_balance + amount);
+
+CTLSPEC AG (sender_balance >= amount -> AX (next(sender_balance) = sender_balance - amount))
+CTLSPEC AG (sender_balance >= amount -> AX (next(receiver_balance) = receiver_balance + amount))
+CTLSPEC AX (next(sender_balance) + next(receiver_balance) = sender_balance + receiver_balance)
+CTLSPEC AG (next(sender_balance) <= sender_balance)
+CTLSPEC AG (next(receiver_balance) <= receiver_balance + amount)
