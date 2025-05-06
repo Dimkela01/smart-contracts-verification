@@ -1,5 +1,3 @@
-import os
-import shutil
 from subprocess import run
 from extract_model import generate_smv_from_sol
 from mistral_wrapper import generate_ctl_from_interface
@@ -26,18 +24,18 @@ def run_nuxmv(input_file, output_file):
         else:
             raise FileNotFoundError("nuXmv executable not found.")
 
-    # Use absolute path to .smv file (Windows-safe)
+    # Use absolute path to .smv file
     abs_input_path = os.path.abspath(input_file)
 
     # Create temporary .cmds file with proper commands
     cmds = f"""
-read_model -i "{abs_input_path}"
-flatten_hierarchy
-encode_variables
-build_model
-check_ctlspec
-quit
-"""
+    read_model -i "{abs_input_path}"
+    flatten_hierarchy
+    encode_variables
+    build_model
+    check_ctlspec
+    quit
+    """
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".cmds", mode="w") as cmd_file:
         cmd_file.write(cmds)
