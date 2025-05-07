@@ -7,11 +7,11 @@ def batch_verify():
     Goes through all smart contracts in
     a specific folder and verifies them,
     here we assume there is a folder called
-    contract in the same directory
+    contracts in the same directory
     """
+    
     contract_folder = "contracts"
-    sol_files = [f for f in os.listdir(contract_folder) if f.endswith(".sol") and not f.startswith("I")]
-    #This filters out IERC files since we do not want to verify them
+    sol_files = [f for f in os.listdir(contract_folder) if f.endswith(".sol")]
 
     if not sol_files:
         print("No smart contract files found to verify in 'contracts/' folder.")

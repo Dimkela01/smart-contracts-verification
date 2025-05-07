@@ -52,12 +52,14 @@ def extract_transfer_logic(ast_root):
     guard_expr = None
     transitions = []
     used_vars = set()
+    require_seen = False
 
     def visit(node):
-        nonlocal guard_expr, transitions
+        nonlocal guard_expr, transitions, require_seen
+
         if node.get("nodeType") == "FunctionDefinition":
             if node.get("name") != "transfer":
-                return  # Only handle the transfer function
+                return  # Only process the `transfer` function
 
             body = node.get("body", {}).get("statements", [])
             for stmt in body:
@@ -66,6 +68,7 @@ def extract_transfer_logic(ast_root):
                     if expr["nodeType"] == "FunctionCall":
                         fn_name = expr["expression"].get("name")
                         if fn_name == "require":
+                            require_seen = True
                             condition = expr["arguments"][0]
                             guard_expr = parse_expression(condition)
                             used_vars.update(extract_identifiers(condition))
@@ -78,8 +81,8 @@ def extract_transfer_logic(ast_root):
                         if lhs == "<unknown>" or rhs == "<unknown>":
                             continue
 
-                        #if rhs == "1000":  # prevent constant overwrite bug
-                        #    continue
+                        if rhs == "1000":  # Skip constant overwrite noise
+                            continue
 
                         if operator == "-=":
                             transition_rhs = f"{lhs} - {rhs}"
@@ -88,7 +91,12 @@ def extract_transfer_logic(ast_root):
                         else:
                             transition_rhs = rhs
 
-                        transitions.append({"lhs": lhs, "rhs": transition_rhs})
+                        transitions.append({
+                            "lhs": lhs,
+                            "rhs": transition_rhs,
+                            "guarded": require_seen
+                        })
+
                         used_vars.add(lhs)
                         used_vars.update(extract_identifiers(expr["rightHandSide"]))
 
@@ -96,12 +104,14 @@ def extract_transfer_logic(ast_root):
                     condition = stmt["condition"]
                     true_body = stmt.get("trueBody", {})
                     revert_found = False
+
                     if true_body.get("nodeType") == "ExpressionStatement":
                         expr = true_body.get("expression", {})
                         if expr.get("nodeType") == "FunctionCall":
                             callee = expr.get("expression", {})
                             if callee.get("nodeType") == "Identifier" and callee.get("name") == "revert":
                                 revert_found = True
+
                     elif true_body.get("nodeType") == "Block":
                         for sub in true_body.get("statements", []):
                             expr = sub.get("expression", {})
@@ -110,12 +120,10 @@ def extract_transfer_logic(ast_root):
                                 if callee.get("nodeType") == "Identifier" and callee.get("name") == "revert":
                                     revert_found = True
 
-                    # NEW CASE: RevertStatement directly
-                    elif true_body.get("nodeType") == "RevertStatement":
-                        revert_found = True
                     if revert_found:
                         parsed = parse_expression(condition)
                         guard_expr = f"!({parsed})"
+                        require_seen = True
                         used_vars.update(extract_identifiers(condition))
 
         for key, value in node.items():
@@ -127,7 +135,6 @@ def extract_transfer_logic(ast_root):
                         visit(item)
 
     visit(ast_root)
-
     return guard_expr, transitions, used_vars
 
 
@@ -162,27 +169,39 @@ def generate_smv_from_sol(sol_path, smv_output_path):
         "amount": "0..1000"
     }
 
-    if guard and transitions:
+    if transitions:
         variables = "VAR\n" + "\n".join([
             f"    {name} : {range_str};" for name, range_str in state_vars.items()
         ])
 
         init = """\nINIT\n    sender_balance = 500 & receiver_balance = 500 & amount = 0;"""
 
+        guarded_trans = []
+        unguarded_trans = []
         assigned = set()
-        dedup_transitions = []
+
         for t in transitions:
             if t["lhs"] not in assigned and t["rhs"] != "1000":
-                dedup_transitions.append(f"next({t['lhs']}) = {t['rhs']}")
+                expr = f"next({t['lhs']}) = {t['rhs']}"
+                if t["guarded"]:
+                    guarded_trans.append(expr)
+                else:
+                    unguarded_trans.append(expr)
                 assigned.add(t["lhs"])
 
-        trans_body = " &\n    ".join(dedup_transitions)
+        trans_sections = []
 
-        trans = f"""
-TRANS
-    ({guard}) ->
-    ({trans_body});
-"""
+        if unguarded_trans:
+            trans_sections.append(
+                "TRANS\n    " + " &\n    ".join(unguarded_trans) + ";"
+            )
+
+        if guarded_trans and guard:
+            trans_sections.append(
+                f"TRANS\n    ({guard}) ->\n    (" + " &\n    ".join(guarded_trans) + ");"
+            )
+
+        trans = "\n\n".join(trans_sections)
 
         smv_code = f"MODULE main\n{variables}\n{init}\n{trans}"
 
@@ -193,3 +212,4 @@ TRANS
         print(f"Model saved to {smv_output_path}")
     else:
         raise Exception("Could not extract valid logic from AST!")
+

@@ -6,7 +6,6 @@ VAR
 
 INIT
     sender_balance = 500 & receiver_balance = 500 & amount = 0;
-
 TRANS
     (sender_balance >= amount) ->
     (next(sender_balance) = sender_balance - amount &
