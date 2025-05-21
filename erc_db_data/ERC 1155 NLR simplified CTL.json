@@ -1,0 +1,44 @@
+{
+  "ERC1155_Requirements": [
+    {
+      "NLR": "A contract must track balances for each token type and owner.",
+      "CTL": "AG (balanceOf(_owner, _id) -> EF (returns(uint256))"
+    },
+    {
+      "NLR": "Batch balance checks must return balances for multiple owners and token IDs in one call.",
+      "CTL": "AG (balanceOfBatch(_owners, _ids) -> EF (returns(uint256[]))"
+    },
+    {
+      "NLR": "Transfers must fail if the sender lacks tokens or approval.",
+      "CTL": "AG (safeTransferFrom(_from, _to, _id, _value) -> (balanceOf(_from, _id) >= _value && (isApprovedForAll(_from, msg.sender) || getApproved(_id) == msg.sender))"
+    },
+    {
+      "NLR": "Batch transfers must fail if array lengths mismatch or balances are insufficient.",
+      "CTL": "AG (safeBatchTransferFrom(_from, _to, _ids, _values) -> (length(_ids) == length(_values) && ∀i (balanceOf(_from, _ids[i]) >= _values[i]))"
+    },
+    {
+      "NLR": "Transfers to contracts must call a receiver hook and revert if the recipient rejects.",
+      "CTL": "AG (safeTransferFrom(_from, _to, _id, _value) -> (codeSize(_to) == 0 || onERC1155Received(_to, _from, _id, _value, _data) == 0xf23a6e61))"
+    },
+    {
+      "NLR": "Batch transfers to contracts must call a batch receiver hook.",
+      "CTL": "AG (safeBatchTransferFrom(_from, _to, _ids, _values) -> (codeSize(_to) == 0 || onERC1155BatchReceived(_to, _from, _ids, _values, _data) == 0xbc197c81))"
+    },
+    {
+      "NLR": "Operators (like marketplaces) must be explicitly approved to manage all tokens for an owner.",
+      "CTL": "AG (setApprovalForAll(_operator, _approved) -> EF ApprovalForAll(_owner, _operator, _approved))"
+    },
+    {
+      "NLR": "Minting tokens must emit a Transfer event with `_from` as the zero address.",
+      "CTL": "AG (mint(_to, _id, _value) -> EF TransferSingle(msg.sender, 0x0, _to, _id, _value))"
+    },
+    {
+      "NLR": "Burning tokens must emit a Transfer event with `_to` as the zero address.",
+      "CTL": "AG (burn(_from, _id, _value) -> EF TransferSingle(msg.sender, _from, 0x0, _id, _value))"
+    },
+    {
+      "NLR": "Contracts must implement ERC-165 and return `true` for the ERC-1155 interface ID (0xd9b67a26).",
+      "CTL": "AG (supportsInterface(0xd9b67a26) -> returns(true))"
+    }
+  ]
+}

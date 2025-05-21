@@ -1,0 +1,52 @@
+{
+  "ERC20_Requirements": [
+    {
+      "NLR": "The token must provide a way to check its total supply as a number.",
+      "CTL": "AG (totalSupply() -> EF (returns(uint256)))"
+    },
+    {
+      "NLR": "The token must allow anyone to check the balance of any address.",
+      "CTL": "AG (balanceOf(_owner) -> EF (returns(uint256)))"
+    },
+    {
+      "NLR": "A token transfer must fail if the sender doesn’t have enough tokens.",
+      "CTL": "AG (transfer(_to, _value) -> (balance[msg.sender] >= _value))"
+    },
+    {
+      "NLR": "Every successful token transfer must log a public record of the transaction.",
+      "CTL": "AG (transfer(_to, _value) -> EF Transfer(msg.sender, _to, _value))"
+    },
+    {
+      "NLR": "A delegated transfer must fail if the spender isn’t approved or the owner lacks tokens.",
+      "CTL": "AG (transferFrom(_from, _to, _value) -> (allowance[_from][msg.sender] >= _value && balance[_from] >= _value))"
+    },
+    {
+      "NLR": "Every successful delegated transfer must log a public record.",
+      "CTL": "AG (transferFrom(_from, _to, _value) -> EF Transfer(_from, _to, _value))"
+    },
+    {
+      "NLR": "Setting a spending limit must replace any previous limit for that spender.",
+      "CTL": "AG (approve(_spender, _value) -> (allowance[msg.sender][_spender] == _value))"
+    },
+    {
+      "NLR": "Every new spending limit must log a public approval record.",
+      "CTL": "AG (approve(_spender, _value) -> EF Approval(msg.sender, _spender, _value))"
+    },
+    {
+      "NLR": "The token must report how many tokens a spender is allowed to move for an owner.",
+      "CTL": "AG (allowance(_owner, _spender) -> EF (returns(uint256)))"
+    },
+    {
+      "NLR": "Creating new tokens must log a transfer from the zero address.",
+      "CTL": "AG (mint(_to, _value) -> EF Transfer(0x0, _to, _value))"
+    },
+    {
+      "NLR": "External systems must handle both success and failure responses from transfers/approvals.",
+      "CTL": "AG (call -> (return == true || return == false))"
+    },
+    {
+      "NLR": "Tokens must allow spending limits to be updated without first resetting to zero.",
+      "CTL": "AG (!(approve(_spender, _value) -> require(allowance[_spender] == 0)))"
+    }
+  ]
+}

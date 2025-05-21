@@ -1,0 +1,36 @@
+{
+  "ERC721_Requirements": [
+    {
+      "NLR": "Every NFT must have a unique ID that never changes and can be queried to find its owner.",
+      "CTL": "AG (ownerOf(_tokenId) -> EF (returns(address)))"
+    },
+    {
+      "NLR": "A contract must track the number of NFTs owned by each address.",
+      "CTL": "AG (balanceOf(_owner) -> EF (returns(uint256)))"
+    },
+    {
+      "NLR": "Only the NFT owner or an approved operator can transfer it. Transfers to the zero address must fail.",
+      "CTL": "AG (transferFrom(_from, _to, _tokenId) -> (_from == ownerOf(_tokenId) || isApprovedForAll(_from, msg.sender) || getApproved(_tokenId) == msg.sender) && _to != address(0))"
+    },
+    {
+      "NLR": "Safe transfers must check if the recipient is a contract capable of handling NFTs. If not, the transfer must fail.",
+      "CTL": "AG (safeTransferFrom(_from, _to, _tokenId) -> (codeSize(_to) == 0 || onERC721Received(_to, _from, _tokenId, data) == 0x150b7a02))"
+    },
+    {
+      "NLR": "Approvals for specific NFTs must be revocable and emit an event when changed.",
+      "CTL": "AG (approve(_approved, _tokenId) -> EF Approval(_owner, _approved, _tokenId))"
+    },
+    {
+      "NLR": "Operators (like marketplaces) must be explicitly approved to manage all NFTs for an owner.",
+      "CTL": "AG (setApprovalForAll(_operator, _approved) -> EF ApprovalForAll(_owner, _operator, _approved))"
+    },
+    {
+      "NLR": "Transfers must emit an event, including when NFTs are minted (`_from` = zero) or burned (`_to` = zero).",
+      "CTL": "AG (Transfer(_from, _to, _tokenId) -> (_from != _to))"
+    },
+    {
+      "NLR": "Contracts must implement ERC-165 to declare support for ERC-721.",
+      "CTL": "AG (supportsInterface(0x80ac58cd) -> returns(true))"
+    }
+  ]
+}

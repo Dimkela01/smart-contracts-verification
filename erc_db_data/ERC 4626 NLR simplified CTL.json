@@ -1,0 +1,40 @@
+{
+  "ERC4626_Requirements": [
+    {
+      "NLR": "The vault must report the address of its underlying ERC-20 asset.",
+      "CTL": "AG (asset() -> EF (returns(address)))"
+    },
+    {
+      "NLR": "The vault must calculate the total value of underlying assets it manages, including fees and yield.",
+      "CTL": "AG (totalAssets() -> EF (returns(uint256)))"
+    },
+    {
+      "NLR": "Conversions between assets and shares must round down and exclude fees.",
+      "CTL": "AG (convertToShares(assets) <= (assets * totalSupply()) / totalAssets()) && AG (convertToAssets(shares) <= (shares * totalAssets()) / totalSupply())"
+    },
+    {
+      "NLR": "Deposits must mint shares to the receiver and emit a Deposit event.",
+      "CTL": "AG (deposit(assets, receiver) -> EF Deposit(msg.sender, receiver, assets, shares))"
+    },
+    {
+      "NLR": "Withdrawals must burn shares from the owner, send assets to the receiver, and emit a Withdraw event.",
+      "CTL": "AG (withdraw(assets, receiver, owner) -> EF Withdraw(msg.sender, receiver, owner, assets, shares))"
+    },
+    {
+      "NLR": "Preview functions must return the exact outcome of deposits/withdrawals (including fees).",
+      "CTL": "AG (previewDeposit(assets) == sharesMintedInNextDeposit) && AG (previewWithdraw(assets) == sharesBurnedInNextWithdraw)"
+    },
+    {
+      "NLR": "Max functions must return the user's actionable limits (e.g., maxDeposit <= available liquidity).",
+      "CTL": "AG (maxDeposit(receiver) <= (cap - totalAssets()))"
+    },
+    {
+      "NLR": "Transfers of vault shares must comply with ERC-20 rules if enabled.",
+      "CTL": "AG (transfer(to, shares) -> (balanceOf(msg.sender) >= shares))"
+    },
+    {
+      "NLR": "Vaults must implement ERC-20 metadata (name/symbol/decimals).",
+      "CTL": "AG (symbol() -> EF (returns(string)))"
+    }
+  ]
+}

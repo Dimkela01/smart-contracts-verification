@@ -1,0 +1,28 @@
+{
+  "ERC165_Requirements": [
+    {
+      "NLR": "A compliant contract must implement a function to check if it supports a given interface.",
+      "CTL": "AG (supportsInterface(interfaceID) -> EF (returns(bool)))"
+    },
+    {
+      "NLR": "The interface check function must return `true` when queried for its own interface ID (0x01ffc9a7).",
+      "CTL": "AG (supportsInterface(0x01ffc9a7) -> returns(true))"
+    },
+    {
+      "NLR": "The interface check function must return `false` when queried for the invalid ID (0xffffffff).",
+      "CTL": "AG (supportsInterface(0xffffffff) -> returns(false))"
+    },
+    {
+      "NLR": "The interface check function must use no more than 30,000 gas.",
+      "CTL": "AG (supportsInterface(interfaceID) -> gasUsed <= 30000)"
+    },
+    {
+      "NLR": "To detect ERC-165 support, a contract must correctly respond to two static calls (with IDs 0x01ffc9a7 and 0xffffffff).",
+      "CTL": "AG (isCompliant(contract) <-> (supportsInterface(0x01ffc9a7) && !supportsInterface(0xffffffff)))"
+    },
+    {
+      "NLR": "An interface ID is calculated by XORing all function selectors in the interface.",
+      "CTL": "N/A (Definitional)"
+    }
+  ]
+}
