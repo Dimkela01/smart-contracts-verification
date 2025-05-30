@@ -1,0 +1,4 @@
+digraph FSM {
+    rankdir=LR;
+    "storedNumber" -> "_num" [label="set"];
+}

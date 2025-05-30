@@ -1,0 +1,28 @@
+MODULE main
+VAR
+    _initialSupply : 0..1000;
+    balances_msg.sender : 0..1000;
+    totalSupply : 0..1000;
+    msg : 0..1000;
+    balances : 0..1000;
+    balances__to : 0..1000;
+    _amount : 0..1000;
+    call : {{, transfer}};
+
+INIT
+    _initialSupply = 0 & balances_msg.sender = 0 & totalSupply = 0 & msg = 0 & balances = 0 & balances__to = 0 & _amount = 0 & call = ;
+TRANS
+    (call = ) ->
+    (next(balances_msg.sender) = _initialSupply &
+    next(totalSupply) = _initialSupply);
+
+TRANS
+    (call = transfer & balances_msg.sender >= _amount) ->
+    (next(balances_msg.sender) = balances_msg.sender - _amount &
+    next(balances__to) = balances__to + _amount);
+
+CTLSPEC AG (sender_balance >= amount -> AX (next(sender_balance) = sender_balance - amount))
+CTLSPEC AG (sender_balance >= amount -> AX (next(receiver_balance) = receiver_balance + amount))
+CTLSPEC AX (next(sender_balance) + next(receiver_balance) = sender_balance + receiver_balance)
+CTLSPEC AG (next(sender_balance) <= sender_balance)
+CTLSPEC AG (next(receiver_balance) <= receiver_balance + amount)

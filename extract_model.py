@@ -2,21 +2,6 @@ from solcx import compile_source
 import os
 
 
-def parse_index_access(node):
-    if node["nodeType"] == "IndexAccess":
-        base = parse_expression(node["baseExpression"])
-        index = parse_expression(node["indexExpression"])
-
-        if base == "balances":
-            if index == "msg.sender":
-                return "sender_balance"
-            elif index in ("to", "recipient"):
-                return "receiver_balance"
-            else:
-                return f"balances_{index}"
-    return "<unknown>"
-
-
 def normalize_variable(name):
     if name in ("value", "amount", "tokens"):
         return "amount"
@@ -44,44 +29,39 @@ def parse_expression(expr):
         sub = parse_expression(expr["subExpression"])
         return f"{op}{sub}"
     elif node_type == "IndexAccess":
-        return parse_index_access(expr)
+        base = parse_expression(expr["baseExpression"])
+        index = parse_expression(expr["indexExpression"])
+        return f"{base}_{index}"
     return "<unknown>"
 
 
-def extract_transfer_logic(ast_root):
-    guard_expr = None
-    transitions = []
+def extract_logic(ast_root):
+    function_map = {}
     used_vars = set()
-    require_seen = False
 
     def visit(node):
-        nonlocal guard_expr, transitions, require_seen
-
-        if node.get("nodeType") == "FunctionDefinition":
-            if node.get("name") != "transfer":
-                return  # Only process the `transfer` function
+        if node.get("nodeType") == "FunctionDefinition" and node.get("body"):
+            func_name = node.get("name")
+            transitions = []
+            current_guard = None
 
             body = node.get("body", {}).get("statements", [])
             for stmt in body:
                 if stmt["nodeType"] == "ExpressionStatement":
                     expr = stmt["expression"]
+
                     if expr["nodeType"] == "FunctionCall":
                         fn_name = expr["expression"].get("name")
                         if fn_name == "require":
-                            require_seen = True
-                            condition = expr["arguments"][0]
-                            guard_expr = parse_expression(condition)
-                            used_vars.update(extract_identifiers(condition))
+                            current_guard = parse_expression(expr["arguments"][0])
+                            used_vars.update(extract_identifiers(expr["arguments"][0]))
 
                     elif expr["nodeType"] == "Assignment":
                         operator = expr.get("operator", "=")
-                        lhs = parse_index_access(expr["leftHandSide"])
+                        lhs = parse_expression(expr["leftHandSide"])
                         rhs = parse_expression(expr["rightHandSide"])
 
                         if lhs == "<unknown>" or rhs == "<unknown>":
-                            continue
-
-                        if rhs == "1000":  # Skip constant overwrite noise
                             continue
 
                         if operator == "-=":
@@ -94,37 +74,14 @@ def extract_transfer_logic(ast_root):
                         transitions.append({
                             "lhs": lhs,
                             "rhs": transition_rhs,
-                            "guarded": require_seen
+                            "guard": current_guard
                         })
 
                         used_vars.add(lhs)
-                        used_vars.update(extract_identifiers(expr["rightHandSide"]))
+                        used_vars.update([rhs])
 
-                elif stmt["nodeType"] == "IfStatement":
-                    condition = stmt["condition"]
-                    true_body = stmt.get("trueBody", {})
-                    revert_found = False
-
-                    if true_body.get("nodeType") == "ExpressionStatement":
-                        expr = true_body.get("expression", {})
-                        if expr.get("nodeType") == "FunctionCall":
-                            callee = expr.get("expression", {})
-                            if callee.get("nodeType") == "Identifier" and callee.get("name") == "revert":
-                                revert_found = True
-
-                    elif true_body.get("nodeType") == "Block":
-                        for sub in true_body.get("statements", []):
-                            expr = sub.get("expression", {})
-                            if expr.get("nodeType") == "FunctionCall":
-                                callee = expr.get("expression", {})
-                                if callee.get("nodeType") == "Identifier" and callee.get("name") == "revert":
-                                    revert_found = True
-
-                    if revert_found:
-                        parsed = parse_expression(condition)
-                        guard_expr = f"!({parsed})"
-                        require_seen = True
-                        used_vars.update(extract_identifiers(condition))
+            if transitions:
+                function_map[func_name] = transitions
 
         for key, value in node.items():
             if isinstance(value, dict) and 'nodeType' in value:
@@ -135,7 +92,7 @@ def extract_transfer_logic(ast_root):
                         visit(item)
 
     visit(ast_root)
-    return guard_expr, transitions, used_vars
+    return function_map, used_vars
 
 
 def extract_identifiers(expr):
@@ -153,7 +110,21 @@ def extract_identifiers(expr):
     return identifiers
 
 
-def generate_smv_from_sol(sol_path, smv_output_path):
+def generate_dot_from_transitions(function_map, dot_output_path):
+    lines = ["digraph FSM {", "    rankdir=LR;"]
+    for func, transitions in function_map.items():
+        for t in transitions:
+            from_var = t['lhs']
+            to_expr = t['rhs']
+            guard = f" [{t['guard']}]" if t.get("guard") else ""
+            lines.append(f'    "{from_var}" -> "{to_expr}" [label="{func}{guard}"];')
+    lines.append("}")
+    with open(dot_output_path, "w") as f:
+        f.write("\n".join(lines))
+    print(f"Graphviz .dot model saved to {dot_output_path}")
+
+
+def generate_smv_from_sol(sol_path, smv_output_path, dot_output_path="./.dot"):
     with open(sol_path, "r") as f:
         source_code = f.read()
 
@@ -161,45 +132,40 @@ def generate_smv_from_sol(sol_path, smv_output_path):
     (_, contract_data), = compiled.items()
     ast = contract_data.get("ast")
 
-    guard, transitions, used_vars = extract_transfer_logic(ast)
+    function_map, used_vars = extract_logic(ast)
+    state_vars = {var: "0..1000" for var in used_vars if var != "<unknown>"}
 
-    state_vars = {
-        "sender_balance": "0..1000",
-        "receiver_balance": "0..1000",
-        "amount": "0..1000"
-    }
-
-    if transitions:
+    if function_map:
         variables = "VAR\n" + "\n".join([
             f"    {name} : {range_str};" for name, range_str in state_vars.items()
-        ])
+        ]) + "\n    call : {{" + ", ".join(function_map.keys()) + "}};"
 
-        init = """\nINIT\n    sender_balance = 500 & receiver_balance = 500 & amount = 0;"""
-
-        guarded_trans = []
-        unguarded_trans = []
-        assigned = set()
-
-        for t in transitions:
-            if t["lhs"] not in assigned and t["rhs"] != "1000":
-                expr = f"next({t['lhs']}) = {t['rhs']}"
-                if t["guarded"]:
-                    guarded_trans.append(expr)
-                else:
-                    unguarded_trans.append(expr)
-                assigned.add(t["lhs"])
+        init = "\nINIT\n    " + " & ".join([
+            f"{var} = 0" for var in state_vars
+        ]) + f" & call = {list(function_map.keys())[0]};"
 
         trans_sections = []
+        for func_name, transitions in function_map.items():
+            guarded = []
+            unguarded = []
+            for t in transitions:
+                expr = f"next({t['lhs']}) = {t['rhs']}"
+                if t.get("guard"):
+                    guarded.append((t["guard"], expr))
+                else:
+                    unguarded.append(expr)
 
-        if unguarded_trans:
-            trans_sections.append(
-                "TRANS\n    " + " &\n    ".join(unguarded_trans) + ";"
-            )
+            if unguarded:
+                trans_sections.append(f"TRANS\n    (call = {func_name}) ->\n    (" + " &\n    ".join(unguarded) + ");")
 
-        if guarded_trans and guard:
-            trans_sections.append(
-                f"TRANS\n    ({guard}) ->\n    (" + " &\n    ".join(guarded_trans) + ");"
-            )
+            if guarded:
+                grouped = {}
+                for guard, expr in guarded:
+                    grouped.setdefault(guard, []).append(expr)
+                for guard, exprs in grouped.items():
+                    trans_sections.append(
+                        f"TRANS\n    (call = {func_name} & {guard}) ->\n    (" + " &\n    ".join(exprs) + ");"
+                    )
 
         trans = "\n\n".join(trans_sections)
 
@@ -210,6 +176,9 @@ def generate_smv_from_sol(sol_path, smv_output_path):
             f.write(smv_code)
 
         print(f"Model saved to {smv_output_path}")
-    else:
-        raise Exception("Could not extract valid logic from AST!")
 
+        if dot_output_path:
+            generate_dot_from_transitions(function_map, dot_output_path)
+
+    else:
+        raise Exception("No valid transitions extracted from AST!")

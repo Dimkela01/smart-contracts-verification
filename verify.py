@@ -64,8 +64,9 @@ def verify_contract(contract_name):
     print(f"\nVerifying contract: {contract_name}")
 
     try:
+        dotpath = f"dotoutputs/{contract_name}.dot"
         # Generate SMV model
-        generate_smv_from_sol(contract_path, smv_path)
+        generate_smv_from_sol(contract_path, smv_path, dotpath)
 
         # Generate CTL spec via Mistral
         generate_ctl_from_interface(contract_path, ctl_path)

@@ -1,0 +1,5 @@
+digraph FSM {
+    rankdir=LR;
+    "owner" -> "msg.sender" [label=""];
+    "hasVoted_msg.sender" -> "true" [label="vote [candidateIndex < candidates.length]"];
+}

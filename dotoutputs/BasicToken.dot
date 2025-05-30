@@ -1,0 +1,7 @@
+digraph FSM {
+    rankdir=LR;
+    "balances_msg.sender" -> "_initialSupply" [label=""];
+    "totalSupply" -> "_initialSupply" [label=""];
+    "balances_msg.sender" -> "balances_msg.sender - _amount" [label="transfer [balances_msg.sender >= _amount]"];
+    "balances__to" -> "balances__to + _amount" [label="transfer [balances_msg.sender >= _amount]"];
+}

@@ -1,6 +1,10 @@
 import os
+
+import solcx
+
 from verify import verify_contract
 
+solcx.install_solc('0.8.20')
 
 def batch_verify():
     """

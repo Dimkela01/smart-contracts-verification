@@ -1,0 +1,21 @@
+MODULE main
+VAR
+    hasVoted_msg.sender : 0..1000;
+    owner : 0..1000;
+    msg : 0..1000;
+    true : 0..1000;
+    candidateIndex : 0..1000;
+    hasVoted : 0..1000;
+    msg.sender : 0..1000;
+    candidates : 0..1000;
+    call : {{, vote}};
+
+INIT
+    hasVoted_msg.sender = 0 & owner = 0 & msg = 0 & true = 0 & candidateIndex = 0 & hasVoted = 0 & msg.sender = 0 & candidates = 0 & call = ;
+TRANS
+    (call = ) ->
+    (next(owner) = msg.sender);
+
+TRANS
+    (call = vote & candidateIndex < candidates.length) ->
+    (next(hasVoted_msg.sender) = true);

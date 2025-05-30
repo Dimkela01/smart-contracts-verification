@@ -1,0 +1,10 @@
+digraph FSM {
+    rankdir=LR;
+    "buyer" -> "msg.sender" [label=""];
+    "seller" -> "_seller" [label=""];
+    "arbiter" -> "_arbiter" [label=""];
+    "amount" -> "msg.value" [label=""];
+    "isFunded" -> "true" [label=""];
+    "isReleased" -> "true" [label="releaseToSeller [isFunded && !isReleased]"];
+    "isReleased" -> "true" [label="refundBuyer [isFunded && !isReleased]"];
+}

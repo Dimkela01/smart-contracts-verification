@@ -1,0 +1,11 @@
+MODULE main
+VAR
+    storedNumber : 0..1000;
+    _num : 0..1000;
+    call : {{set}};
+
+INIT
+    storedNumber = 0 & _num = 0 & call = set;
+TRANS
+    (call = set) ->
+    (next(storedNumber) = _num);

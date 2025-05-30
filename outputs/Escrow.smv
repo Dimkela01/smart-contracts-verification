@@ -1,0 +1,33 @@
+MODULE main
+VAR
+    buyer : 0..1000;
+    amount : 0..1000;
+    isFunded : 0..1000;
+    msg : 0..1000;
+    arbiter : 0..1000;
+    msg.value : 0..1000;
+    true : 0..1000;
+    _arbiter : 0..1000;
+    seller : 0..1000;
+    isReleased : 0..1000;
+    _seller : 0..1000;
+    msg.sender : 0..1000;
+    call : {{, releaseToSeller, refundBuyer}};
+
+INIT
+    buyer = 0 & amount = 0 & isFunded = 0 & msg = 0 & arbiter = 0 & msg.value = 0 & true = 0 & _arbiter = 0 & seller = 0 & isReleased = 0 & _seller = 0 & msg.sender = 0 & call = ;
+TRANS
+    (call = ) ->
+    (next(buyer) = msg.sender &
+    next(seller) = _seller &
+    next(arbiter) = _arbiter &
+    next(amount) = msg.value &
+    next(isFunded) = true);
+
+TRANS
+    (call = releaseToSeller & isFunded && !isReleased) ->
+    (next(isReleased) = true);
+
+TRANS
+    (call = refundBuyer & isFunded && !isReleased) ->
+    (next(isReleased) = true);
